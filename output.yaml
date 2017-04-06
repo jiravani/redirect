@@ -1,0 +1,32 @@
+AWSTemplateFormatVersion: '2010-09-09'Description: An AWS Serverless Specification template describing your function.
+Resources:
+  redirectDynamoDB:
+    PrimaryKey:
+      Name: token
+      Type: String
+    ProvisionedThroughput:
+      ReadCapacityUnits: 5
+      WriteCapacityUnits: 5
+    Type: AWS::Serverless::SimpleTable
+  redirectLambda:
+    Properties:
+      CodeUri: s3://1s-potato/0007fb3f40c79b11b922d06796b6af04
+      Description: ''
+      Environment:
+        Variables:
+          dynamodb_table:
+            Ref: redirectDynamoDB
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /redirect/{proxy+}
+            Method: ANY
+
+      Handler: redirect.lambda_handler
+      MemorySize: 128
+      Role: arn:aws:iam::842337631775:role/service-role/lambda_dynamoDB_role
+      Runtime: python2.7
+      Timeout: 3
+    Type: AWS::Serverless::Function
+Transform: AWS::Serverless-2016-10-31
