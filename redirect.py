@@ -11,7 +11,7 @@ dynamodb = boto3.client('dynamodb')
 def lambda_handler(event, context):
 
     method = event['httpMethod']
-    domain = "https://{domain}/{stage}".format(domain=event['headers']['Host'], stage=event['requestContext']['stage'])
+    domain = "https://{domain}/{stage}/redirect".format(domain=event['headers']['Host'], stage=event['requestContext']['stage'])
     print(domain)
 
     if method == 'GET':
