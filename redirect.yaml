@@ -11,10 +11,12 @@ Resources:
       Description: ''
       MemorySize: 128
       Timeout: 3
-      Role: 'arn:aws:iam::842337631775:role/service-role/lambda_dynamoDB_role'
+      Policies:
+        - AmazonS3FullAccess
+        - AmazonDynamoDBFullAccess
       Environment:
         Variables:
-          dynamodb_table: !Ref redirectDynamoDB
+          dynamodb_table: !Ref redirectDynamoDB          
       Events:
         Api:
           Type: Api

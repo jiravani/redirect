@@ -11,18 +11,20 @@ dynamodb = boto3.client('dynamodb')
 def lambda_handler(event, context):
 
     method = event['httpMethod']
-    print(event)
+    domain = "https://{domain}/{stage}".format(domain=event['headers']['Host'], stage=event['requestContext']['stage'])
+    print(domain)
+
     if method == 'GET':
         token = event['pathParameters']['proxy']
-        return retrieve_url(token)
+        return retrieve_url(token, domain)
 
     if method == 'POST':
-        url = event['destination_url']
-        return create_new_url(url)
+        url = json.loads(event['body'])['destination_url']
+        return create_new_url(url, domain)
 
 
-def create_new_url(url):
-
+def create_new_url(url, domain):
+    print(url)
     if not validate_url(url):
         return {"content": "Invalid URL"}
     token = generate_token()
@@ -34,13 +36,13 @@ def create_new_url(url):
                              'destination_url': {
                                 'S': url
                         }})
-    body = "Shorted URL for {url} created. \n".format(url) + "The shortened url is {domain}/{token}".format(domain=os.environ['domain'], token=token)
+    body = "Shorted URL for {url} created. \n".format(url=url) + "The shortened url is {domain}/{token}".format(domain=domain, token=token)
     return {
         "statusCode":200, "headers": {"Content-Type": 'text/html'}, "body": body
     }
 
 
-def retrieve_url(token):
+def retrieve_url(token, domain):
 
     response = dynamodb.get_item(  TableName=os.environ['dynamodb_table'], Key={'id': {'S': token}})
     if 'Item' not in response:
