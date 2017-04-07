@@ -1,6 +1,6 @@
 ﻿AWSTemplateFormatVersion: '2010-09-09'
 Transform: 'AWS::Serverless-2016-10-31'
-Description: An AWS Serverless Specification template describing your function.
+Description: This is a url redirection tool for your domain (similar to bit.ly)
 Resources:
   redirectLambda:
     Type: 'AWS::Serverless::Function'
@@ -12,16 +12,15 @@ Resources:
       MemorySize: 128
       Timeout: 3
       Policies:
-        - AmazonS3FullAccess
         - AmazonDynamoDBFullAccess
       Environment:
         Variables:
-          dynamodb_table: !Ref redirectDynamoDB          
+          dynamodb_table: !Ref redirectDynamoDB
       Events:
         Api:
           Type: Api
           Properties:
-            Path: /redirect/{proxy+}
+            Path: /redirect/{token}
             Method: ANY
   redirectDynamoDB:
     Type: AWS::Serverless::SimpleTable
