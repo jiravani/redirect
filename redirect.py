@@ -25,15 +25,15 @@ def lambda_handler(event, context):
 def create_new_url(post_body, domain):
 
     url = json.loads(post_body)['destination_url']
-    token = json.loads(post_body)['custom_token'] if json.loads(post_body)['custom_token'] else generate_token()
-    
+    token = json.loads(post_body)['custom_token'] if 'custom_token' in json.loads(post_body) else generate_token()
+    print(token)
     return_payload = {
                         "statusCode": 200,
                         "headers": {"Content-Type": 'text/html', "Access-Control-Allow-Origin": "*"}
                      }
 
     if not validate_url(url):
-        return_payload['body'] = "The provided URL is invalid."
+        return_payload['body'] = "The provided URL is invalid.\n"
         return return_payload
 
     # token = generate_token()
@@ -41,7 +41,8 @@ def create_new_url(post_body, domain):
                         Item={  'id': {'S': "{}".format(token)},
                                 'destination_url': {
                                 'S': url}})
-    return_payload['body'] = "Shorted URL for {url} created. \n".format(url=url) + "The shortened url is {domain}//{token}".format(domain=domain, token=token)
+    return_payload['body'] = "Shorted URL for {url} created. \n".format(url=url) + \
+                             "The shortened url is {domain}/{token}".format(domain=domain, token=token)
     return return_payload
 
 
@@ -62,7 +63,7 @@ def retrieve_url(token, domain):
     # if the token key doesn't exist in the dynamodb table, return response
     if 'Item' not in response:
         return_payload['statusCode'] = 200
-        return_payload['body'] = "Token {} Invalid. URL Not Found".format(token)
+        return_payload['body'] = "Token {} Invalid. URL Not Found\n".format(token)
         return return_payload
 
     return_payload['headers']['Location'] = response['Item']['destination_url']['S']
