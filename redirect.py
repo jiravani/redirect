@@ -23,7 +23,7 @@ def lambda_handler(event, context):
 
 
 def create_new_url(post_body, domain):
-
+    print(post_body)
     url = json.loads(post_body)['destination_url']
     token = json.loads(post_body)['custom_token'] if 'custom_token' in json.loads(post_body) else generate_token()
     print(token)
@@ -42,7 +42,7 @@ def create_new_url(post_body, domain):
                                 'destination_url': {
                                 'S': url}})
     return_payload['body'] = "Shorted URL for {url} created. \n".format(url=url) + \
-                             "The shortened url is {domain}/{token}".format(domain=domain, token=token)
+                             "The shortened url is {domain}/{token}\n".format(domain=domain, token=token)
     return return_payload
 
 

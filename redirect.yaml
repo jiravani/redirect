@@ -17,11 +17,16 @@ Resources:
         Variables:
           dynamodb_table: !Ref redirectDynamoDB
       Events:
-        Api:
+        Api1:
           Type: Api
           Properties:
             Path: /redirect/{proxy+}
             Method: ANY
+        Api2:
+          Type: Api
+          Properties:
+            Path: /redirect
+            Method: GET
   redirectDynamoDB:
     Type: AWS::Serverless::SimpleTable
     PrimaryKey:
