@@ -20,7 +20,7 @@ Resources:
         Api:
           Type: Api
           Properties:
-            Path: /redirect/{token}
+            Path: /redirect/{proxy+}
             Method: ANY
   redirectDynamoDB:
     Type: AWS::Serverless::SimpleTable

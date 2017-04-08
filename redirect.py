@@ -19,43 +19,55 @@ def lambda_handler(event, context):
         return retrieve_url(token, domain)
 
     if method == 'POST':
-        url = json.loads(event['body'])['destination_url']
-        return create_new_url(url, domain)
+        return create_new_url(event['body'], domain)
 
 
-def create_new_url(url, domain):
-    print(url)
+def create_new_url(post_body, domain):
+
+    url = json.loads(post_body)['destination_url']
+    token = json.loads(post_body)['custom_token'] if json.loads(post_body)['custom_token'] else generate_token()
+    
+    return_payload = {
+                        "statusCode": 200,
+                        "headers": {"Content-Type": 'text/html', "Access-Control-Allow-Origin": "*"}
+                     }
+
     if not validate_url(url):
-        return {"content": "Invalid URL"}
-    token = generate_token()
+        return_payload['body'] = "The provided URL is invalid."
+        return return_payload
+
+    # token = generate_token()
     dynamodb.put_item(  TableName=os.environ['dynamodb_table'],
-                        Item={
-                            'id': {
-                                'S': "{}".format(token),
-                             },
-                             'destination_url': {
-                                'S': url
-                        }})
-    body = "Shorted URL for {url} created. \n".format(url=url) + "The shortened url is {domain}/{token}".format(domain=domain, token=token)
-    return {
-        "statusCode":200, "headers": {"Content-Type": 'text/html'}, "body": body
-    }
+                        Item={  'id': {'S': "{}".format(token)},
+                                'destination_url': {
+                                'S': url}})
+    return_payload['body'] = "Shorted URL for {url} created. \n".format(url=url) + "The shortened url is {domain}//{token}".format(domain=domain, token=token)
+    return return_payload
 
 
 def retrieve_url(token, domain):
 
-    response = dynamodb.get_item(  TableName=os.environ['dynamodb_table'], Key={'id': {'S': token}})
-    if 'Item' not in response:
-        body = "<html><body><h1>Token {} Invalid. URL Not Found</h1></body></html>".format(token)
-        return {
-            "statusCode": 200, "headers": {'Content-Type': 'text/html'}, "body": body
-        }
+    return_payload = {
+                        "statusCode": 301,
+                        "headers": {
+                            "Content-Type": 'text/html',
+                            "Access-Control-Allow-Origin": "*"
+                        }
+                     }
 
-    destination_url = response['Item']['destination_url']['S']
-    body = "<html><body>Moved: <a href={url}>{url}</a></body></html>".format(url=destination_url)
-    return {
-        "statusCode": 301, "headers": {"Location": destination_url}, "body": body
-    }
+    # based on the token, retrieve url from dynamodb table
+    response = dynamodb.get_item(   TableName=os.environ['dynamodb_table'],
+                                    Key={'id': {'S': token}})
+
+    # if the token key doesn't exist in the dynamodb table, return response
+    if 'Item' not in response:
+        return_payload['statusCode'] = 200
+        return_payload['body'] = "Token {} Invalid. URL Not Found".format(token)
+        return return_payload
+
+    return_payload['headers']['Location'] = response['Item']['destination_url']['S']
+    return_payload['body'] = ""
+    return return_payload
 
 
 def generate_token():
