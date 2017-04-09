@@ -10,16 +10,30 @@ dynamodb = boto3.client('dynamodb')
 
 def lambda_handler(event, context):
 
+    print(event)
     method = event['httpMethod']
+    print(method)
     domain = "https://{domain}/{stage}/redirect".format(domain=event['headers']['Host'], stage=event['requestContext']['stage'])
-    print(domain)
 
     if method == 'GET':
-        token = event['pathParameters']['proxy']
-        return retrieve_url(token, domain)
+
+        if  event['resource'] == '/redirect':
+            print('Serve Website')
+            return api_website(event)
+        elif event['pathParameters'] != None:
+            print('Return Token')
+            return retrieve_url(event['pathParameters']['proxy'], domain)
 
     if method == 'POST':
+        print('Post')
         return create_new_url(event['body'], domain)
+
+
+    return  {
+                        "statusCode": 200,
+                        "headers": {"Content-Type": 'text/html', "Access-Control-Allow-Origin": "*"},
+                        "body":"HTTP method not supported."
+            }
 
 
 def create_new_url(post_body, domain):
@@ -88,3 +102,69 @@ def validate_url(url):
     if not re.findall(regex, url):
         return False
     return True
+
+
+def api_website(event):
+
+    # url = '\'https://' + event['requestContext']['apiId'] + '.execute-api.us-west-2.amazonaws.com' + '/prod'+event['resource']+"/\',"
+    url = '"https://{domain}/{stage}/redirect"'.format(domain=event['headers']['Host'], stage=event['requestContext']['stage'])
+    body = """<html>
+            <body bgcolor=\"#E6E6FA\">
+            <head>
+            <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+            <script>
+
+            $(document).ready(function(){
+                $("button").click(function(){
+                  var destinationUrl = document.getElementById("destinationUrl").value;
+                  var dict = {};
+                  dict["destination_url"] = destinationUrl;
+                  if (document.getElementById("customToken").value != "") {
+                      dict["custom_token"] = document.getElementById("customToken").value;
+                  }
+
+                  $.ajax({
+                    type: 'POST',
+                    headers: {
+                        'Content-Type':'application/json',
+                        'Accept':'text/html'
+                    },
+                    url:"""
+
+    body += url
+    body +=         """,
+                    crossDomain: true,
+                    data: JSON.stringify(dict), //'{"destination_url":"'+ destinationUrl + '"}',
+                    dataType: 'text',
+                    success: function(responseData) {
+                        document.getElementById("id").innerHTML = responseData;
+                    },
+                    error: function (responseData) {
+                        alert('POST failed.'+ JSON.stringify(responseData));
+                    }
+                  });
+                });
+            });
+            </script>
+            </head>
+            <body>"""
+    body += event['resource'][1:]
+    body += """<form class="form" action="" method="post">
+                    <textarea rows="1" cols="50" name="text" id="destinationUrl" placeholder="Enter URL"></textarea>
+              </form>
+              <form class="form" action="" method="post">
+                    <textarea rows="1" cols="50" name="text" id="customToken" placeholder="Use Custom Token (domain.com/redirect/custom_token)"></textarea>
+              </form>
+            <button>Shorten URL</button>
+            <div id='id'></div>
+            </body>
+            </html>"""
+
+    return {
+                "statusCode": 200,
+                "headers": {
+                    "Content-Type": 'text/html',
+                    "Access-Control-Allow-Origin": "*"
+                },
+                "body": body
+    }
