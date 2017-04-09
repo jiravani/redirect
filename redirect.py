@@ -106,7 +106,6 @@ def validate_url(url):
 
 def api_website(event):
 
-    # url = '\'https://' + event['requestContext']['apiId'] + '.execute-api.us-west-2.amazonaws.com' + '/prod'+event['resource']+"/\',"
     url = '"https://{domain}/{stage}/redirect"'.format(domain=event['headers']['Host'], stage=event['requestContext']['stage'])
     body = """<html>
             <body bgcolor=\"#E6E6FA\">
