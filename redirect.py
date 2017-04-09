@@ -17,11 +17,11 @@ def lambda_handler(event, context):
     # Stage will be omitted if the API is behind a domain (rather than the api gateway dns)
     domain = get_domain(event)
 
-    # The 
+    # The
     if method == 'GET':
         if  event['resource'] == '/redirect':
             print('Serve Website')
-            return api_website(event)
+            return api_website(event, domain)
         elif event['pathParameters'] != None:
             print('Return Token')
             return retrieve_url(event['pathParameters']['proxy'], domain)
@@ -106,9 +106,8 @@ def validate_url(url):
     return True
 
 
-def api_website(event):
+def api_website(event, domain):
 
-    url = '"https://{domain}/{stage}/redirect"'.format(domain=event['headers']['Host'], stage=event['requestContext']['stage'])
     body = """<html>
             <body bgcolor=\"#E6E6FA\">
             <head>
@@ -132,10 +131,10 @@ def api_website(event):
                     },
                     url:"""
 
-    body += url
+    body += domain
     body +=         """,
                     crossDomain: true,
-                    data: JSON.stringify(dict), //'{"destination_url":"'+ destinationUrl + '"}',
+                    data: JSON.stringify(dict),
                     dataType: 'text',
                     success: function(responseData) {
                         document.getElementById("id").innerHTML = responseData;
@@ -151,7 +150,7 @@ def api_website(event):
             <body>"""
     body += event['resource'][1:]
     body += """<form class="form" action="" method="post">
-                    <textarea rows="1" cols="50" name="text" id="destinationUrl" placeholder="Enter URL"></textarea>
+                    <textarea rows="1" cols="50" name="text" id="destinationUrl" placeholder="Enter URL (http://www.example.com)"></textarea>
               </form>
               <form class="form" action="" method="post">
                     <textarea rows="1" cols="50" name="text" id="customToken" placeholder="Use Custom Token (domain.com/redirect/custom_token)"></textarea>

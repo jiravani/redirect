@@ -1,8 +1,8 @@
 ﻿AWSTemplateFormatVersion: '2010-09-09'
 Transform: 'AWS::Serverless-2016-10-31'
-Description: This is a url redirection tool for your domain (similar to bit.ly)
+Description: This is a url redirection tool for your domain (bit.ly clone)
 Resources:
-  redirectLambda:
+  UrlRedirectLambda:
     Type: 'AWS::Serverless::Function'
     Properties:
       Handler: redirect.lambda_handler
@@ -36,7 +36,7 @@ Resources:
       ReadCapacityUnits: 5
       WriteCapacityUnits: 5
 Outputs:
-  	APIEndPoint:
-      Description: This is the invocation endpoint for this API
-      Value: !Ref ServerlessRestApi
-      #!Join ["/", !Join [ ".", [ !Ref ServerlessRestApi, "execute-api.awazonaws.com"] ], !Ref ServerlessRestApiProdStage]
+  APIEndPoint:
+    Description: This is the invocation endpoint for this API
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/${ServerlessRestApiProdStage}/redirect"
+      #!Join ["/", !Join [ ".", [ !Ref ServerlessRestApi, "us-west-2.execute-api.awazonaws.com"] ], !Ref ServerlessRestApiProdStage, ""]
