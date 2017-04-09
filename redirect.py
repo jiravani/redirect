@@ -129,10 +129,10 @@ def api_website(event, domain):
                         'Content-Type':'application/json',
                         'Accept':'text/html'
                     },
-                    url:"""
+                    url:'"""
 
     body += domain
-    body +=         """,
+    body +=         """',
                     crossDomain: true,
                     data: JSON.stringify(dict),
                     dataType: 'text',
