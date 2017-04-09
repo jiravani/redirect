@@ -35,3 +35,8 @@ Resources:
     ProvisionedThroughput:
       ReadCapacityUnits: 5
       WriteCapacityUnits: 5
+Outputs:
+  	APIEndPoint:
+      Description: This is the invocation endpoint for this API
+      Value: !Ref ServerlessRestApi
+      #!Join ["/", !Join [ ".", [ !Ref ServerlessRestApi, "execute-api.awazonaws.com"] ], !Ref ServerlessRestApiProdStage]

@@ -12,11 +12,13 @@ def lambda_handler(event, context):
 
     print(event)
     method = event['httpMethod']
-    print(method)
-    domain = "https://{domain}/{stage}/redirect".format(domain=event['headers']['Host'], stage=event['requestContext']['stage'])
 
+    # Get the domain be referenced (either example.com/redirect or ...amazonaws.com)
+    # Stage will be omitted if the API is behind a domain (rather than the api gateway dns)
+    domain = get_domain(event)
+
+    # The 
     if method == 'GET':
-
         if  event['resource'] == '/redirect':
             print('Serve Website')
             return api_website(event)
@@ -167,3 +169,10 @@ def api_website(event):
                 },
                 "body": body
     }
+
+
+def get_domain(event):
+    if 'amazonaws.com' in event['headers']['Host']:
+        return "https://{domain}/{stage}/redirect".format(domain=event['headers']['Host'], stage=event['requestContext']['stage'])
+    else:
+        return "https://{domain}/redirect".format(domain=event['headers']['Host'])
