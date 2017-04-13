@@ -57,7 +57,7 @@ def create_new_url(post_body, domain):
                         Item={  'id': {'S': "{}".format(token)},
                                 'destination_url': {
                                 'S': url}})
-    return_payload['body'] = "Shorted URL for {url} created. \n".format(url=url) + \
+    return_payload['body'] = "Shortened URL for {url} created. \n".format(url=url) + \
                              "The shortened url is {domain}/{token}\n".format(domain=domain, token=token)
     return return_payload
 
