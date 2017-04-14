@@ -38,11 +38,15 @@ def lambda_handler(event, context):
 
 
 def create_new_url(event, domain):
-    print(event)
+
     post_body = event['body']
     url = json.loads(post_body)['destination_url']
-    token = json.loads(post_body)['custom_token'] if 'custom_token' in json.loads(post_body) else generate_token()
-    print(token)
+
+    # If the user provided a custom token, use that token. Otherwise,
+    # generate a new token
+    token = json.loads(post_body)['custom_token'] if 'custom_token' in \
+                json.loads(post_body) else generate_token()
+
     return_payload = {
                         "statusCode": 200,
                         "headers": {
@@ -51,15 +55,19 @@ def create_new_url(event, domain):
                         }
                      }
 
+    # Validates URL from post_body
     if not validate_url(url):
         return_payload['body'] = "The provided URL is invalid.\n"
         return return_payload
 
-    # token = generate_token()
+    # Put the token and url into DynamoDB
     dynamodb.put_item(TableName=os.environ['dynamodb_table'],
                       Item={'id': {'S': "{}".format(token)},
                             'destination_url': {
                             'S': url}})
+
+    # if the consumer requested a JSON payload in return,
+    # return json, otherwise just return a string
     if 'application/json' in event['headers']['Accept']:
         return_payload['headers']['Content-Type'] = 'application/json'
         return_payload['body'] = json.dumps({
@@ -84,18 +92,20 @@ def retrieve_url(event, domain):
                         }
                      }
 
-    # based on the token, retrieve url from dynamodb table
+    token = event['pathParameters']['proxy']
+
+    # Based on the token, retrieve url from dynamodb table
     response = dynamodb.get_item(TableName=os.environ['dynamodb_table'],
                                  Key={'id': {'S': token}})
 
-    token = event['pathParameters']['proxy']
-
-    # if the token key doesn't exist in the dynamodb table, return response
+    # if the token key doesn't exist in the dynamodb table, return error body
     if 'Item' not in response:
         return_payload['statusCode'] = 200
         return_payload['body'] = "Token {} Invalid. URL Not Found\n".format(token)
         return return_payload
 
+    # if the token was found, retrieve the URL from DynamoDB and add it to the
+    # 'Location' header for the redirect
     return_payload['headers']['Location'] = response['Item']['destination_url']['S']
     return_payload['body'] = ""
     return return_payload
@@ -108,10 +118,9 @@ def generate_token():
 
 
 def validate_url(url):
-
+    # Validate the given URL
     regex = re.compile( r'^(?:http|ftp)s?://'  # http:// or https://
                         r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}\.?)|'  # domain...
-                        r'localhost|'  # localhost...
                         r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})'  # ...or ip
                         r'(?::\d+)?'  # optional port
                         r'(?:/?|[/?]\S+)$', re.IGNORECASE)
@@ -120,8 +129,23 @@ def validate_url(url):
     return True
 
 
-def api_website(event, domain):
+def get_domain(event):
 
+    # Supports test invocations from API Gateway
+    if 'Host' not in event['headers']:
+        return "https://testinvocation/redirect"
+
+    # Extracts the domain from event object based on for both api gateway URLs
+    # or custom domains
+    if 'amazonaws.com' in event['headers']['Host']:
+        return "https://{domain}/{stage}/redirect".format(domain=event['headers']['Host'],
+                                                          stage=event['requestContext']['stage'])
+    else:
+        return "https://{domain}/redirect".format(domain=event['headers']['Host'])
+
+
+def api_website(event, domain):
+    # returns a website front end for the redirect tool
     body = """<html>
             <body bgcolor=\"#E6E6FA\">
             <head>
@@ -182,10 +206,3 @@ def api_website(event, domain):
                 },
                 "body": body
     }
-
-
-def get_domain(event):
-    if 'amazonaws.com' in event['headers']['Host']:
-        return "https://{domain}/{stage}/redirect".format(domain=event['headers']['Host'], stage=event['requestContext']['stage'])
-    else:
-        return "https://{domain}/redirect".format(domain=event['headers']['Host'])
