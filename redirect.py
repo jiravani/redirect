@@ -13,39 +13,42 @@ def lambda_handler(event, context):
     print(event)
     method = event['httpMethod']
 
-    # Get the domain be referenced (either example.com/redirect or ...amazonaws.com)
-    # Stage will be omitted if the API is behind a domain (rather than the api gateway dns)
+    # Get the domain be referenced (either example.com/redirect
+    # or ...amazonaws.com) stage will be omitted if the API is behind a
+    # domain (rather than the api gateway dns)
     domain = get_domain(event)
 
-    # The
     if method == 'GET':
-        if  event['resource'] == '/redirect':
-            print('Serve Website')
+        if event['resource'] == '/redirect':
             return api_website(event, domain)
-        elif event['pathParameters'] != None:
-            print('Return Token')
-            return retrieve_url(event['pathParameters']['proxy'], domain)
+        elif event['pathParameters'] is not None:
+            return retrieve_url(event, domain)
 
     if method == 'POST':
-        print('Post')
-        return create_new_url(event['body'], domain)
+        return create_new_url(event, domain)
 
-
-    return  {
+    return {
                         "statusCode": 200,
-                        "headers": {"Content-Type": 'text/html', "Access-Control-Allow-Origin": "*"},
-                        "body":"HTTP method not supported."
-            }
+                        "headers": {
+                            "Content-Type": 'text/html',
+                            "Access-Control-Allow-Origin": "*"
+                        },
+                        "body": "HTTP method not supported."
+    }
 
 
-def create_new_url(post_body, domain):
-    print(post_body)
+def create_new_url(event, domain):
+    print(event)
+    post_body = event['body']
     url = json.loads(post_body)['destination_url']
     token = json.loads(post_body)['custom_token'] if 'custom_token' in json.loads(post_body) else generate_token()
     print(token)
     return_payload = {
                         "statusCode": 200,
-                        "headers": {"Content-Type": 'text/html', "Access-Control-Allow-Origin": "*"}
+                        "headers": {
+                            "Content-Type": 'text/html',
+                            "Access-Control-Allow-Origin": "*"
+                        }
                      }
 
     if not validate_url(url):
@@ -53,16 +56,25 @@ def create_new_url(post_body, domain):
         return return_payload
 
     # token = generate_token()
-    dynamodb.put_item(  TableName=os.environ['dynamodb_table'],
-                        Item={  'id': {'S': "{}".format(token)},
-                                'destination_url': {
-                                'S': url}})
-    return_payload['body'] = "Shortened URL for {url} created. \n".format(url=url) + \
-                             "The shortened url is {domain}/{token}\n".format(domain=domain, token=token)
+    dynamodb.put_item(TableName=os.environ['dynamodb_table'],
+                      Item={'id': {'S': "{}".format(token)},
+                            'destination_url': {
+                            'S': url}})
+    if 'application/json' in event['headers']['Accept']:
+        return_payload['headers']['Content-Type'] = 'application/json'
+        return_payload['body'] = json.dumps({
+            'shortened_url': '{domain}/{token}'.format(domain=domain,
+                                                       token=token)
+        })
+    else:
+        return_payload['body'] = \
+            "Shortened URL for {url} created. \n".format(url=url) + \
+            "The shortened url is {domain}/{token}\n".format(domain=domain,
+                                                             token=token)
     return return_payload
 
 
-def retrieve_url(token, domain):
+def retrieve_url(event, domain):
 
     return_payload = {
                         "statusCode": 301,
@@ -73,8 +85,10 @@ def retrieve_url(token, domain):
                      }
 
     # based on the token, retrieve url from dynamodb table
-    response = dynamodb.get_item(   TableName=os.environ['dynamodb_table'],
-                                    Key={'id': {'S': token}})
+    response = dynamodb.get_item(TableName=os.environ['dynamodb_table'],
+                                 Key={'id': {'S': token}})
+
+    token = event['pathParameters']['proxy']
 
     # if the token key doesn't exist in the dynamodb table, return response
     if 'Item' not in response:
