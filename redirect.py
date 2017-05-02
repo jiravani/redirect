@@ -132,7 +132,7 @@ def validate_url(url):
 def get_domain(event):
 
     # Supports test invocations from API Gateway
-    if 'Host' not in event['headers']:
+    if event['headers'] is None:
         return "https://testinvocation/redirect"
 
     # Extracts the domain from event object based on for both api gateway URLs
