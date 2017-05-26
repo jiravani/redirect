@@ -19,8 +19,15 @@ def lambda_handler(event, context):
     domain = get_domain(event)
 
     if method == 'GET':
+
+        # Called if the user hits the /redirect resource
+
         if event['resource'] == '/redirect':
             return api_website(event, domain)
+
+        # Called if the user is trying to hit a shortened url
+        # the pathParameters will contain the http://.../redirect/token_id
+        # therefore the pathParameters will not be empty
         elif event['pathParameters'] is not None:
             return retrieve_url(event, domain)
 
