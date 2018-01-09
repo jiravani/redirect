@@ -1,0 +1,63 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: This is a url redirection tool for your domain (bit.ly clone)
+Outputs:
+  APIEndPoint:
+    Description: This is the invocation endpoint for this API
+    Value:
+      Fn::Sub: https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/${ServerlessRestApiProdStage}/
+Parameters:
+  ApiPassword:
+    AllowedPattern: ^[a-zA-Z0-9]*$
+    Description: The database admin account password
+    MaxLength: 20
+    NoEcho: true
+    Type: String
+Resources:
+  LambdaPermission:
+    Properties:
+      Action: lambda:invokeFunction
+      FunctionName:
+        Fn::GetAtt:
+        - UrlRedirectLambda
+        - Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Sub: arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ServerlessRestApi}/*/*/*
+    Type: AWS::Lambda::Permission
+  RedirectDynamoDB:
+    PrimaryKey:
+      Name: id
+      Type: String
+    ProvisionedThroughput:
+      ReadCapacityUnits: 5
+      WriteCapacityUnits: 5
+    Type: AWS::Serverless::SimpleTable
+  UrlRedirectLambda:
+    Properties:
+      CodeUri: s3://1s-potato-west/92616120437394f1a09711fcffeb2349
+      Description: ''
+      Environment:
+        Variables:
+          dynamodb_table:
+            Ref: RedirectDynamoDB
+          password:
+            Ref: ApiPassword
+      Events:
+        Api1:
+          Properties:
+            Method: ANY
+            Path: /{proxy+}
+          Type: Api
+        Api2:
+          Properties:
+            Method: ANY
+            Path: /
+          Type: Api
+      Handler: redirect.lambda_handler
+      MemorySize: 128
+      Policies:
+      - AmazonDynamoDBFullAccess
+      Runtime: python2.7
+      Timeout: 3
+    Type: AWS::Serverless::Function
+Transform: AWS::Serverless-2016-10-31

@@ -22,7 +22,7 @@ def lambda_handler(event, context):
 
         # Called if the user hits the /redirect resource
 
-        if event['resource'] == '/redirect':
+        if event['resource'] == '/':
             return api_website(event, domain)
 
         # Called if the user is trying to hit a shortened url
@@ -48,6 +48,7 @@ def create_new_url(event, domain):
 
     post_body = event['body']
     url = json.loads(post_body)['destination_url']
+    password = json.loads(post_body)['password']
 
     # If the user provided a custom token, use that token. Otherwise,
     # generate a new token
@@ -67,24 +68,29 @@ def create_new_url(event, domain):
         return_payload['body'] = "The provided URL is invalid.\n"
         return return_payload
 
+
+    if password != os.environ.get('password', password):
+        return_payload['body'] = "The password is invalid.\n"
+        return return_payload
+
     # Put the token and url into DynamoDB
-    response = dynamodb.put_item(TableName=os.environ['dynamodb_table'],
-                                Item={'id': {'S': "{}".format(token)},
+    response = dynamodb.put_item(   TableName=os.environ['dynamodb_table'],
+                                    Item={'id': {'S': "{}".format(token)},
                                        'destination_url':{'S':url}
-                                })
+                                     })
     print(response)
     # if the consumer requested a JSON payload in return,
     # return json, otherwise just return a string
     if 'application/json' in event['headers']['Accept']:
         return_payload['headers']['Content-Type'] = 'application/json'
         return_payload['body'] = json.dumps({
-            'shortened_url': '{domain}/{token}'.format(domain=domain,
+            'shortened_url': '{domain}{token}'.format(domain=domain,
                                                        token=token)
         })
     else:
         return_payload['body'] = \
             "Shortened URL for {url} created. <br>".format(url=url) + \
-            "The shortened url is <a href=\"{domain}/{token}\">{domain}/{token}</a><br>".format(domain=domain,
+            "The shortened url is <a href=\"{domain}{token}\">{domain}{token}</a><br>".format(domain=domain,
                                                              token=token)
     return return_payload
 
@@ -140,15 +146,15 @@ def get_domain(event):
 
     # Supports test invocations from API Gateway
     if event['headers'] is None:
-        return "https://testinvocation/redirect"
+        return "https://testinvocation/"
 
     # Extracts the domain from event object based on for both api gateway URLs
     # or custom domains
     if 'amazonaws.com' in event['headers']['Host']:
-        return "https://{domain}/{stage}/redirect".format(domain=event['headers']['Host'],
-                                                          stage=event['requestContext']['stage'])
+        return "https://{domain}/{stage}/".format(  domain=event['headers']['Host'],
+                                                    stage=event['requestContext']['stage'])
     else:
-        return "https://{domain}/redirect".format(domain=event['headers']['Host'])
+        return "https://{domain}/".format(domain=event['headers']['Host'])
 
 
 def api_website(event, domain):
@@ -175,8 +181,10 @@ def api_website(event, domain):
     $(document).ready(function(){
         $("button").click(function(){
           var destinationUrl = document.getElementById("destinationUrl").value;
+          var password = document.getElementById("password").value;
           var dict = {};
           dict["destination_url"] = destinationUrl;
+          dict["password"] = password;
           if (document.getElementById("customToken").value != "") {
               dict["custom_token"] = document.getElementById("customToken").value;
           }
@@ -210,7 +218,8 @@ def api_website(event, domain):
             <textarea rows="1" cols="50" name="text" id="destinationUrl" placeholder="Enter URL (http://www.example.com)"></textarea>
       </form>
       <form class="form" action="" method="post">
-            <textarea rows="1" cols="50" name="text" id="customToken" placeholder="Use Custom Token (domain.com/redirect/custom_token)"></textarea>
+            <textarea rows="1" cols="50" name="text" id="customToken" placeholder="Use Custom Token (domain.com/custom_token)"></textarea>
+            <br>Password: <input lass="form" type="password" id="password" name="password">
       </form>
 
 

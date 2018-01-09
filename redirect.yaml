@@ -1,6 +1,13 @@
 ﻿AWSTemplateFormatVersion: '2010-09-09'
 Transform: 'AWS::Serverless-2016-10-31'
 Description: This is a url redirection tool for your domain (bit.ly clone)
+Parameters:
+  ApiPassword:
+      NoEcho: true
+      Description : "The database admin account password"
+      Type: String
+      MaxLength: 20
+      AllowedPattern: "^[a-zA-Z0-9]*$"
 Resources:
   UrlRedirectLambda:
     Type: 'AWS::Serverless::Function'
@@ -15,19 +22,20 @@ Resources:
         - AmazonDynamoDBFullAccess
       Environment:
         Variables:
-          dynamodb_table: !Ref redirectDynamoDB
+          dynamodb_table: !Ref RedirectDynamoDB
+          password: !Ref ApiPassword
       Events:
         Api1:
           Type: Api
           Properties:
-            Path: /redirect/{proxy+}
+            Path: /{proxy+}
             Method: ANY
         Api2:
           Type: Api
           Properties:
-            Path: /redirect
+            Path: /
             Method: ANY
-  redirectDynamoDB:
+  RedirectDynamoDB:
     Type: AWS::Serverless::SimpleTable
     PrimaryKey:
       Name: id
@@ -35,8 +43,18 @@ Resources:
     ProvisionedThroughput:
       ReadCapacityUnits: 5
       WriteCapacityUnits: 5
+
+  LambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: "lambda:invokeFunction"
+      FunctionName: !GetAtt UrlRedirectLambda.Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ServerlessRestApi}/*/*/*"
+      # arn:aws:execute-api:us-west-2:842337631775:25aiesytmj/*/*/*
+
 Outputs:
   APIEndPoint:
     Description: This is the invocation endpoint for this API
-    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/${ServerlessRestApiProdStage}/redirect"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/${ServerlessRestApiProdStage}/"
       #!Join ["/", !Join [ ".", [ !Ref ServerlessRestApi, "us-west-2.execute-api.awazonaws.com"] ], !Ref ServerlessRestApiProdStage, ""]
